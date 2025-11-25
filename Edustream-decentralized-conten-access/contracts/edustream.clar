@@ -197,3 +197,63 @@
         (ok true)
     )
 )
+
+;; #[allow(unchecked_data)]
+;; Rate and review content
+(define-public (rate-content (content-id uint) (rating uint) (review (string-ascii 200)))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content (unwrap! (map-get? contents content-id) err-not-found))
+            (access-info (unwrap! (map-get? user-access { user: tx-sender, content-id: content-id }) err-unauthorized))
+        )
+        (asserts! (get access-granted access-info) err-unauthorized)
+        (asserts! (<= rating u5) err-invalid-input)
+        (ok (map-set content-ratings { user: tx-sender, content-id: content-id }
+            { rating: rating, review: review }
+        ))
+    )
+)
+
+;; #[allow(unchecked_data)]
+;; Subscribe to platform
+(define-public (subscribe (tier (string-ascii 20)) (duration uint))
+    ;; #[allow(unchecked_data)]
+    (begin
+        (asserts! (> duration u0) err-invalid-input)
+        (ok (map-set user-subscriptions tx-sender
+            {
+                active: true,
+                expiry-block: (+ stacks-block-height duration),
+                tier: tier
+            }
+        ))
+    )
+)
+
+;; #[allow(unchecked_data)]
+;; Verify creator (owner only)
+(define-public (verify-creator (creator principal))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (creator-info (default-to 
+                { total-contents: u0, total-earnings: u0, verified: false }
+                (map-get? creator-stats creator)))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (ok (map-set creator-stats creator 
+            (merge creator-info { verified: true })
+        ))
+    )
+)
+
+;; #[allow(unchecked_data)]
+;; Update platform fee (owner only)
+(define-public (update-platform-fee (new-fee uint))
+    ;; #[allow(unchecked_data)]
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (ok (var-set platform-fee new-fee))
+    )
+)
