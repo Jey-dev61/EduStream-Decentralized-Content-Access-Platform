@@ -1,30 +1,13 @@
+;; EduStream - Decentralized Educational Content Access Platform
+;; Allows students to access educational content with blockchain verification
 
-;; title: edustream
-;; version:
-;; summary:
-;; description:
-
-;; traits
-;;
-
-;; token definitions
-;;
-
-;; constants
-;;
-
-;; data vars
-;;
-
-;; data maps
-;;
-
-;; public functions
-;;
-
-;; read only functions
-;;
-
-;; private functions
-;;
-
+;; Constants
+(define-constant contract-owner tx-sender)
+(define-constant err-owner-only (err u100))
+(define-constant err-not-found (err u101))
+(define-constant err-already-exists (err u102))
+(define-constant err-unauthorized (err u103))
+(define-constant err-invalid-input (err u104))
+(define-constant err-already-revoked (err u105))
+(define-constant err-inactive-content (err u106))
+(define-constant err-insufficient-payment (err u107))
