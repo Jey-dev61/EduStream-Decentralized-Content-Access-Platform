@@ -65,3 +65,62 @@
         tier: (string-ascii 20)
     }
 )
+
+;; #[allow(unchecked_data)]
+;; Add new educational content
+(define-public (add-content (title (string-ascii 100)) (ipfs-hash (string-ascii 64)) (category (string-ascii 50)) (price uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content-id (var-get content-nonce))
+            (creator-info (default-to 
+                { total-contents: u0, total-earnings: u0, verified: false }
+                (map-get? creator-stats tx-sender)))
+        )
+        (asserts! (> (len title) u0) err-invalid-input)
+        (asserts! (> (len ipfs-hash) u0) err-invalid-input)
+        (map-set contents content-id {
+            title: title,
+            creator: tx-sender,
+            ipfs-hash: ipfs-hash,
+            category: category,
+            active: true,
+            price: price,
+            total-views: u0
+        })
+        (map-set creator-stats tx-sender 
+            (merge creator-info { total-contents: (+ (get total-contents creator-info) u1) }))
+        (var-set content-nonce (+ content-id u1))
+        (ok content-id)
+    )
+)
+
+;; #[allow(unchecked_data)]
+;; Update content activity status
+(define-public (toggle-content-status (content-id uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content (unwrap! (map-get? contents content-id) err-not-found))
+        )
+        (asserts! (is-eq tx-sender (get creator content)) err-unauthorized)
+        (ok (map-set contents content-id 
+            (merge content { active: (not (get active content)) })
+        ))
+    )
+)
+
+;; #[allow(unchecked_data)]
+;; Update content price
+(define-public (update-content-price (content-id uint) (new-price uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content (unwrap! (map-get? contents content-id) err-not-found))
+        )
+        (asserts! (is-eq tx-sender (get creator content)) err-unauthorized)
+        (ok (map-set contents content-id 
+            (merge content { price: new-price })
+        ))
+    )
+)
