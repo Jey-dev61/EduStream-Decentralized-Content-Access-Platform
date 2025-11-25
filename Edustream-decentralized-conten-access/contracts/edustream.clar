@@ -124,3 +124,76 @@
         ))
     )
 )
+
+;; #[allow(unchecked_data)]
+;; Grant access to a student
+(define-public (grant-access (user principal) (content-id uint) (duration uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content (unwrap! (map-get? contents content-id) err-not-found))
+        )
+        (asserts! (is-eq tx-sender (get creator content)) err-unauthorized)
+        (asserts! (get active content) err-inactive-content)
+        (ok (map-set user-access { user: user, content-id: content-id }
+            { 
+                access-granted: true, 
+                timestamp: stacks-block-height,
+                expiry: (+ stacks-block-height duration)
+            }
+        ))
+    )
+)
+
+;; #[allow(unchecked_data)]
+;; Revoke access from a user
+(define-public (revoke-access (user principal) (content-id uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content (unwrap! (map-get? contents content-id) err-not-found))
+            (access-info (unwrap! (map-get? user-access { user: user, content-id: content-id }) err-not-found))
+        )
+        (asserts! (is-eq tx-sender (get creator content)) err-unauthorized)
+        (asserts! (get access-granted access-info) err-already-revoked)
+        (ok (map-set user-access { user: user, content-id: content-id }
+            (merge access-info { access-granted: false })
+        ))
+    )
+)
+
+;; #[allow(unchecked_data)]
+;; Purchase content access
+(define-public (purchase-access (content-id uint) (payment uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content (unwrap! (map-get? contents content-id) err-not-found))
+            (creator (get creator content))
+            (creator-info (default-to 
+                { total-contents: u0, total-earnings: u0, verified: false }
+                (map-get? creator-stats creator)))
+        )
+        (asserts! (get active content) err-inactive-content)
+        (asserts! (>= payment (get price content)) err-insufficient-payment)
+        
+        ;; Update creator earnings
+        (map-set creator-stats creator 
+            (merge creator-info { total-earnings: (+ (get total-earnings creator-info) payment) }))
+        
+        ;; Grant access for 1000 blocks (~1 week)
+        (map-set user-access { user: tx-sender, content-id: content-id }
+            { 
+                access-granted: true, 
+                timestamp: stacks-block-height,
+                expiry: (+ stacks-block-height u1000)
+            })
+        
+        ;; Increment view count
+        (map-set contents content-id 
+            (merge content { total-views: (+ (get total-views content) u1) }))
+        
+        (var-set total-revenue (+ (var-get total-revenue) payment))
+        (ok true)
+    )
+)
