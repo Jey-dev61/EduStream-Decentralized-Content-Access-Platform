@@ -257,3 +257,93 @@
         (ok (var-set platform-fee new-fee))
     )
 )
+
+;; Get content details
+(define-read-only (get-content (content-id uint))
+    (map-get? contents content-id)
+)
+
+;; #[allow(unchecked_data)]
+;; Check user access with expiry validation
+(define-read-only (check-access (user principal) (content-id uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (access-info (default-to 
+                { access-granted: false, timestamp: u0, expiry: u0 }
+                (map-get? user-access { user: user, content-id: content-id })))
+        )
+        (if (and (get access-granted access-info) 
+                 (< stacks-block-height (get expiry access-info)))
+            access-info
+            { access-granted: false, timestamp: u0, expiry: u0 }
+        )
+    )
+)
+
+;; Get total content count
+(define-read-only (get-content-count)
+    (ok (var-get content-nonce))
+)
+
+;; Get creator statistics
+(define-read-only (get-creator-stats (creator principal))
+    (map-get? creator-stats creator)
+)
+
+;; Get content rating
+(define-read-only (get-rating (user principal) (content-id uint))
+    (map-get? content-ratings { user: user, content-id: content-id })
+)
+
+;; Get user subscription
+(define-read-only (get-subscription (user principal))
+    (map-get? user-subscriptions user)
+)
+
+;; #[allow(unchecked_data)]
+;; Check if subscription is active
+(define-read-only (is-subscription-active (user principal))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (sub-info (map-get? user-subscriptions user))
+        )
+        (match sub-info
+            subscription (and (get active subscription) 
+                             (< stacks-block-height (get expiry-block subscription)))
+            false
+        )
+    )
+)
+
+;; Get platform fee
+(define-read-only (get-platform-fee)
+    (ok (var-get platform-fee))
+)
+
+;; Get total platform revenue
+(define-read-only (get-total-revenue)
+    (ok (var-get total-revenue))
+)
+
+;; #[allow(unchecked_data)]
+;; Check if content is accessible by user
+(define-read-only (can-access-content (user principal) (content-id uint))
+    ;; #[allow(unchecked_data)]
+    (let
+        (
+            (content (map-get? contents content-id))
+            (access-info (map-get? user-access { user: user, content-id: content-id }))
+        )
+        (match content
+            content-data
+                (match access-info
+                    access-data
+                        (and (get active content-data)
+                             (get access-granted access-data)
+                             (< stacks-block-height (get expiry access-data)))
+                    false)
+            false)
+    )
+)
